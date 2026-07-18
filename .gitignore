@@ -1,0 +1,19 @@
+# Node / Hardhat / Foundry
+node_modules/
+cache/
+artifacts/
+typechain-types/
+out/
+
+# Frontend
+frontend/build/
+frontend/dist/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
