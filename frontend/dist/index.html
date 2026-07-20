@@ -31,13 +31,11 @@
     <button class="secondary" onclick="refresh()">Actualizar saldo</button>
   </div>
   <div id="error" class="error" style="display:none;"></div>
-
   <script>
     const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
     const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const wallet = new ethers.Wallet(privateKey, provider);
     const userAddress = wallet.address;
-
     const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
     const abi = [
       "function transfer(address to, uint256 amount) external",
@@ -45,16 +43,12 @@
       "function getEffectiveCreditLimit(address) view returns (uint256)"
     ];
     const contract = new ethers.Contract(contractAddress, abi, wallet);
-
     function showError(msg) {
       const el = document.getElementById("error");
       el.textContent = msg;
       el.style.display = "block";
     }
-    function hideError() {
-      document.getElementById("error").style.display = "none";
-    }
-
+    function hideError() { document.getElementById("error").style.display = "none"; }
     async function refresh() {
       try {
         hideError();
@@ -62,18 +56,12 @@
         const lim = await contract.getEffectiveCreditLimit(userAddress);
         document.getElementById("balance").textContent = ethers.formatEther(bal);
         document.getElementById("limit").textContent = ethers.formatEther(lim);
-      } catch(e) {
-        showError(e.reason || e.message || "Error desconocido al refrescar");
-      }
+      } catch(e) { showError(e.reason || e.message || "Error al refrescar"); }
     }
-
     async function send() {
       const to = document.getElementById("to").value;
       const amount = document.getElementById("amount").value;
-      if (!to || !amount) {
-        showError("Completa todos los campos");
-        return;
-      }
+      if (!to || !amount) { showError("Completa todos los campos"); return; }
       try {
         hideError();
         const tx = await contract.transfer(to, ethers.parseEther(amount));
@@ -82,12 +70,8 @@
         refresh();
         document.getElementById("to").value = "";
         document.getElementById("amount").value = "";
-      } catch(e) {
-        showError(e.reason || e.message || "Error en la transferencia");
-      }
+      } catch(e) { showError(e.reason || e.message || "Error en la transferencia"); }
     }
-
-    // Cargar saldo al iniciar
     refresh();
   </script>
 </body>
