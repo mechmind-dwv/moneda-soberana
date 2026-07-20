@@ -53,7 +53,7 @@ Sistema monetario ciudadano, robusto y descentralizado, basado en **crédito mut
 | Indexación         | Subsquid / Envio                    |
 | Monedero           | React Native, WalletConnect         |
 | Gobernanza         | Governor de OpenZeppelin, Timelock  |
-| Almacenamiento UI | IPFS, ENS                           |
+| Almacenamiento UI  | IPFS, ENS                           |
 
 ---
 
