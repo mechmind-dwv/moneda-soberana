@@ -3,76 +3,309 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monedero Soberano</title>
+  <title>Moneda Soberana · Gobernanza</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
   <style>
-    body { font-family: sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-    .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-    h2 { margin: 0 0 10px; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+    h1 { text-align: center; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tab { flex: 1; padding: 12px; background: #ddd; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .tab.active { background: #4CAF50; color: white; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     label { display: block; margin: 10px 0 5px; }
-    input { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
-    button { width: 100%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 16px; margin-bottom: 10px; }
-    .secondary { background: #2196F3; }
-    .error { color: darkred; background: #fdd; padding: 15px; border-radius: 5px; }
+    input, select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; }
+    button { width: 100%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 16px; margin-bottom: 10px; cursor: pointer; }
+    button.secondary { background: #2196F3; }
+    button.danger { background: #f44336; }
+    .error { color: darkred; background: #fdd; padding: 15px; border-radius: 5px; margin-bottom: 10px; display: none; }
+    .success { color: darkgreen; background: #dfd; padding: 15px; border-radius: 5px; margin-bottom: 10px; display: none; }
+    .propuesta { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+    .propuesta h3 { margin: 0 0 10px; }
+    .votacion { display: flex; gap: 10px; margin: 10px 0; }
+    .votacion button { flex: 1; }
+    .status { font-style: italic; color: #666; }
   </style>
 </head>
 <body>
-  <h1>🏛️ Monedero Soberano</h1>
-  <div class="card">
-    <p><strong>Mi saldo:</strong> <span id="balance">0</span> SOBER</p>
-    <p><strong>Límite de crédito:</strong> <span id="limit">0</span> SOBER</p>
+  <h1>🏛️ Moneda Soberana</h1>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('monedero')">Monedero</button>
+    <button class="tab" onclick="switchTab('gobernanza')">Gobernanza</button>
+    <button class="tab" onclick="switchTab('ciudadania')">Ciudadanía</button>
   </div>
-  <div>
-    <label>Dirección destino</label>
-    <input id="to" placeholder="0x...">
-    <label>Cantidad (SOBER)</label>
-    <input id="amount" type="number" step="0.01" placeholder="10">
-    <button onclick="send()">Enviar</button>
-    <button class="secondary" onclick="refresh()">Actualizar saldo</button>
+
+  <!-- Panel Monedero -->
+  <div id="monedero" class="panel active">
+    <div class="card">
+      <p><strong>Mi saldo:</strong> <span id="balance">0</span> SOBER</p>
+      <p><strong>Límite de crédito:</strong> <span id="limit">0</span> SOBER</p>
+      <p><strong>Mi dirección:</strong> <span id="miDireccion"></span></p>
+    </div>
+    <div class="card">
+      <label>Dirección destino</label>
+      <input id="to" placeholder="0x...">
+      <label>Cantidad (SOBER)</label>
+      <input id="amount" type="number" step="0.01" placeholder="10">
+      <button onclick="sendSOBER()">Enviar</button>
+      <button class="secondary" onclick="refreshMonedero()">Actualizar saldo</button>
+    </div>
+    <div id="errorMonedero" class="error"></div>
   </div>
-  <div id="error" class="error" style="display:none;"></div>
+
+  <!-- Panel Gobernanza -->
+  <div id="gobernanza" class="panel">
+    <div class="card">
+      <h3>Crear propuesta</h3>
+      <label>Tipo de acción</label>
+      <select id="tipoPropuesta">
+        <option value="setDemurrageRate">Cambiar tasa demurrage</option>
+        <option value="setBaseCreditLimit">Cambiar límite crédito base</option>
+        <option value="setTreasury">Cambiar tesorería</option>
+      </select>
+      <label>Nuevo valor</label>
+      <input id="nuevoValor" placeholder="valor numérico o dirección">
+      <label>Descripción</label>
+      <input id="descripcionPropuesta" placeholder="Motivo de la propuesta">
+      <button onclick="crearPropuesta()">Crear propuesta</button>
+    </div>
+    <div class="card">
+      <h3>Propuestas activas</h3>
+      <div id="listaPropuestas">Cargando...</div>
+    </div>
+    <div id="errorGobernanza" class="error"></div>
+    <div id="successGobernanza" class="success"></div>
+  </div>
+
+  <!-- Panel Ciudadanía -->
+  <div id="ciudadania" class="panel">
+    <div class="card">
+      <h3>Registrar nuevo ciudadano</h3>
+      <label>Dirección</label>
+      <input id="nuevoCiudadano" placeholder="0x...">
+      <button onclick="registrarCiudadano()">Registrar</button>
+      <button class="danger" onclick="revocarCiudadano()">Revocar ciudadanía</button>
+    </div>
+    <div class="card">
+      <h3>Verificar ciudadanía</h3>
+      <label>Dirección a verificar</label>
+      <input id="verificarDireccion" placeholder="0x...">
+      <button onclick="verificarCiudadania()">Verificar</button>
+      <p id="resultadoVerificacion"></p>
+    </div>
+    <div id="errorCiudadania" class="error"></div>
+    <div id="successCiudadania" class="success"></div>
+  </div>
+
   <script>
+    // ---------- Configuración ----------
     const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
-    const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+    const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // cuenta 0 (admin)
     const wallet = new ethers.Wallet(privateKey, provider);
     const userAddress = wallet.address;
-    const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-    const abi = [
+
+    const monedaAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+    const gobAddress = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
+
+    const abiMoneda = [
       "function transfer(address to, uint256 amount) external",
       "function balance(address) view returns (int256)",
       "function getEffectiveCreditLimit(address) view returns (uint256)"
     ];
-    const contract = new ethers.Contract(contractAddress, abi, wallet);
-    function showError(msg) {
-      const el = document.getElementById("error");
+    const abiGob = [
+      "function crearPropuesta(string,bytes) returns (uint256)",
+      "function votar(uint256,bool) external",
+      "function ejecutarPropuesta(uint256) external",
+      "function propuestas(uint256) view returns (uint256,string,uint256,uint256,uint256,uint256,bool,bytes,address)",
+      "function contadorPropuestas() view returns (uint256)",
+      "function ciudadanos(address) view returns (bool)",
+      "function registrarCiudadano(address) external",
+      "function revocarCiudadano(address) external",
+      "function haVotado(address,uint256) view returns (bool)"
+    ];
+
+    const moneda = new ethers.Contract(monedaAddress, abiMoneda, wallet);
+    const gob = new ethers.Contract(gobAddress, abiGob, wallet);
+
+    // ---------- Utilidades ----------
+    function showError(panel, msg) {
+      const el = document.getElementById("error" + panel);
       el.textContent = msg;
       el.style.display = "block";
+      setTimeout(() => { el.style.display = "none"; }, 8000);
     }
-    function hideError() { document.getElementById("error").style.display = "none"; }
-    async function refresh() {
+    function showSuccess(panel, msg) {
+      const el = document.getElementById("success" + panel);
+      el.textContent = msg;
+      el.style.display = "block";
+      setTimeout(() => { el.style.display = "none"; }, 8000);
+    }
+    function switchTab(tab) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(tab).classList.add('active');
+      document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+      if (tab === 'monedero') refreshMonedero();
+      else if (tab === 'gobernanza') cargarPropuestas();
+    }
+    document.getElementById("miDireccion").textContent = userAddress;
+
+    // ---------- Monedero ----------
+    async function refreshMonedero() {
       try {
-        hideError();
-        const bal = await contract.balance(userAddress);
-        const lim = await contract.getEffectiveCreditLimit(userAddress);
+        const bal = await moneda.balance(userAddress);
+        const lim = await moneda.getEffectiveCreditLimit(userAddress);
         document.getElementById("balance").textContent = ethers.formatEther(bal);
         document.getElementById("limit").textContent = ethers.formatEther(lim);
-      } catch(e) { showError(e.reason || e.message || "Error al refrescar"); }
+        hideError("Monedero");
+      } catch (e) {
+        showError("Monedero", e.reason || e.message);
+      }
     }
-    async function send() {
+    async function sendSOBER() {
       const to = document.getElementById("to").value;
       const amount = document.getElementById("amount").value;
-      if (!to || !amount) { showError("Completa todos los campos"); return; }
+      if (!to || !amount) return showError("Monedero", "Completa los campos");
       try {
-        hideError();
-        const tx = await contract.transfer(to, ethers.parseEther(amount));
+        hideError("Monedero");
+        const tx = await moneda.transfer(to, ethers.parseEther(amount));
         await tx.wait();
-        alert("Transferencia de " + amount + " SOBER enviada a " + to);
-        refresh();
+        alert("Transferencia exitosa");
+        refreshMonedero();
         document.getElementById("to").value = "";
         document.getElementById("amount").value = "";
-      } catch(e) { showError(e.reason || e.message || "Error en la transferencia"); }
+      } catch (e) {
+        showError("Monedero", e.reason || e.message);
+      }
     }
-    refresh();
+    function hideError(panel) {
+      document.getElementById("error" + panel).style.display = "none";
+    }
+
+    // ---------- Gobernanza ----------
+    async function cargarPropuestas() {
+      const cont = await gob.contadorPropuestas();
+      const lista = document.getElementById("listaPropuestas");
+      if (cont == 0) {
+        lista.innerHTML = "<p>No hay propuestas aún.</p>";
+        return;
+      }
+      let html = "";
+      for (let i = 1; i <= cont; i++) {
+        try {
+          const p = await gob.propuestas(i);
+          html += `
+            <div class="propuesta">
+              <h3>Propuesta #${p[0]}</h3>
+              <p>${p[1]}</p>
+              <p class="status">Votos a favor: ${p[2]}, en contra: ${p[3]}</p>
+              <p class="status">Fin: ${new Date(Number(p[5]*1000n)).toLocaleString()}</p>
+              ${!p[6] && Date.now()/1000 < Number(p[5]) ? `
+                <div class="votacion">
+                  <button onclick="votar(${i}, true)">👍 A favor</button>
+                  <button onclick="votar(${i}, false)">👎 En contra</button>
+                </div>` : ''}
+              ${!p[6] && Date.now()/1000 >= Number(p[5]) + 2*86400 ? `<button onclick="ejecutarPropuesta(${i})">⚡ Ejecutar</button>` : ''}
+              ${p[6] ? '<p class="status">Ejecutada</p>' : ''}
+            </div>`;
+        } catch (e) {}
+      }
+      lista.innerHTML = html;
+    }
+
+    window.votar = async function(id, aFavor) {
+      try {
+        const tx = await gob.votar(id, aFavor);
+        await tx.wait();
+        showSuccess("Gobernanza", "Voto registrado");
+        cargarPropuestas();
+      } catch (e) {
+        showError("Gobernanza", e.reason || e.message);
+      }
+    };
+
+    window.ejecutarPropuesta = async function(id) {
+      try {
+        const tx = await gob.ejecutarPropuesta(id);
+        await tx.wait();
+        showSuccess("Gobernanza", "Propuesta ejecutada");
+        cargarPropuestas();
+      } catch (e) {
+        showError("Gobernanza", e.reason || e.message);
+      }
+    };
+
+    window.crearPropuesta = async function() {
+      const tipo = document.getElementById("tipoPropuesta").value;
+      const valor = document.getElementById("nuevoValor").value;
+      const desc = document.getElementById("descripcionPropuesta").value;
+      if (!valor || !desc) return showError("Gobernanza", "Completa todos los campos");
+      let iface = new ethers.Interface(["function setDemurrageRate(uint256)", "function setBaseCreditLimit(uint256)", "function setTreasury(address)"]);
+      let func = tipo;
+      let args = [];
+      if (tipo === "setTreasury") {
+        args = [valor]; // address
+      } else {
+        // para uint256
+        try {
+          args = [ethers.parseEther(valor)]; // si son ethers
+        } catch {
+          args = [BigInt(valor)];
+        }
+      }
+      const callData = iface.encodeFunctionData(func, args);
+      try {
+        const tx = await gob.crearPropuesta(desc, callData);
+        await tx.wait();
+        showSuccess("Gobernanza", "Propuesta creada");
+        cargarPropuestas();
+        document.getElementById("nuevoValor").value = "";
+        document.getElementById("descripcionPropuesta").value = "";
+      } catch (e) {
+        showError("Gobernanza", e.reason || e.message);
+      }
+    };
+
+    // ---------- Ciudadanía ----------
+    window.registrarCiudadano = async function() {
+      const addr = document.getElementById("nuevoCiudadano").value;
+      if (!ethers.isAddress(addr)) return showError("Ciudadania", "Dirección inválida");
+      try {
+        const tx = await gob.registrarCiudadano(addr);
+        await tx.wait();
+        showSuccess("Ciudadania", "Ciudadano registrado");
+      } catch (e) {
+        showError("Ciudadania", e.reason || e.message);
+      }
+    };
+
+    window.revocarCiudadano = async function() {
+      const addr = document.getElementById("nuevoCiudadano").value;
+      if (!ethers.isAddress(addr)) return showError("Ciudadania", "Dirección inválida");
+      try {
+        const tx = await gob.revocarCiudadano(addr);
+        await tx.wait();
+        showSuccess("Ciudadania", "Ciudadanía revocada");
+      } catch (e) {
+        showError("Ciudadania", e.reason || e.message);
+      }
+    };
+
+    window.verificarCiudadania = async function() {
+      const addr = document.getElementById("verificarDireccion").value;
+      if (!ethers.isAddress(addr)) return showError("Ciudadania", "Dirección inválida");
+      try {
+        const es = await gob.ciudadanos(addr);
+        document.getElementById("resultadoVerificacion").textContent = es ? "✅ Es ciudadano" : "❌ No es ciudadano";
+      } catch (e) {
+        showError("Ciudadania", e.reason || e.message);
+      }
+    };
+
+    // Iniciar
+    refreshMonedero();
   </script>
 </body>
 </html>
